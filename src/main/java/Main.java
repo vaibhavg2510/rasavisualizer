@@ -21,12 +21,12 @@ public class Main {
 
 
         List<String> coreFilePathList = Arrays.asList(
-                "/Users/vaibhavg/projects/jarvis-rasa-bot-model/data/common/routing_product_usage_form.md"
+                "/Users/vaibhavg/projects/project-name/coreFilePath.md"
         );
 
         List<String> connectedFilePathList = Arrays.asList(
-                "/Users/vaibhavg/projects/jarvis-rasa-bot-model/data/stories/qna/common_checkpoints.md",
-                "/Users/vaibhavg/projects/jarvis-rasa-bot-model/data/stories/qna/AQA.md"
+                "/Users/vaibhavg/projects/project-name/connectedFilePath1.md",
+                "/Users/vaibhavg/projects/project-name/connectedFilePath2.md"
         );
 
         String outputFilePath = "outputfiles/temp";
