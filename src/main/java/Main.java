@@ -1,13 +1,9 @@
 import guru.nidi.graphviz.attribute.Color;
-import guru.nidi.graphviz.attribute.Font;
-import guru.nidi.graphviz.attribute.Rank;
-import guru.nidi.graphviz.attribute.Style;
 import guru.nidi.graphviz.engine.Format;
 import guru.nidi.graphviz.engine.Graphviz;
 import guru.nidi.graphviz.model.Graph;
 import guru.nidi.graphviz.model.LinkSource;
 import guru.nidi.graphviz.model.Node;
-import org.apache.commons.exec.util.StringUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,8 +11,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
 
-import static guru.nidi.graphviz.attribute.Attributes.attr;
-import static guru.nidi.graphviz.attribute.Rank.RankDir.LEFT_TO_RIGHT;
 import static guru.nidi.graphviz.model.Factory.*;
 
 public class Main {
@@ -26,139 +20,115 @@ public class Main {
     public static void main(String[] args) {
 
 
-        try {
-            List<List<String>> fileLinesCore = getFileLines("/Users/vaibhavg/projects/yourstorypath");
-            List<List<String>> fileLines = getConnectedFileLines(fileLinesCore,
-                    Arrays.asList("/Users/vaibhavg/projects/commonConnectedFilesPath"));
-            List<List<Node>> fileStoryList = getNodesFromLines(fileLines);
-            List<LinkSource> linkSourcesRasa = new ArrayList<>();
-            for (List<Node> story : fileStoryList) {
-                Node prev = story.get(story.size() - 1);
-                for (int i = story.size() - 2; i >= 0; i--) {
-                    Node current = story.get(i);
-                    current = current.link(prev);
-                    if (i == 0) {
-                        linkSourcesRasa.add(current);
-                    } else {
-                        prev = current;
-                    }
-                }
-//            for (Node current : story) {
-//                if (null == prev) {
-//                    linkSourcesRasa.add(current);
-//                } else {
-//                    prev.link(current);
-//                }
-//                prev = current;
-//            }
+        List<String> coreFilePathList = Arrays.asList(
+                "/Users/vaibhavg/projects/jarvis-rasa-bot-model/data/common/routing_product_usage_form.md"
+        );
 
-            }
+        List<String> connectedFilePathList = Arrays.asList(
+                "/Users/vaibhavg/projects/jarvis-rasa-bot-model/data/stories/qna/common_checkpoints.md",
+                "/Users/vaibhavg/projects/jarvis-rasa-bot-model/data/stories/qna/AQA.md"
+        );
 
-            List<LinkSource> linkSources = Arrays.asList(
-                    node("a").with(Color.GREEN).link(node("b"), node("c")),
-                    node("b").with(Color.PURPLE).link((node("c"))));
+        String outputFilePath = "outputfiles/temp";
 
+        boolean withStoryTitle = false;
 
-            Graph g = graph("example2").directed()
-//            .graphAttr().with(Rank.dir(LEFT_TO_RIGHT))
-                    .linkAttr().with("class", "link-class")
-                    .with(
-                            linkSourcesRasa.toArray(new LinkSource[linkSourcesRasa.size()])
-                    );
+        String diffIdentifier = "+";
 
-            Graphviz.fromGraph(g).render(Format.PNG).toFile(new File("example/frozenstuck.png"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        plotGraph(coreFilePathList, connectedFilePathList, outputFilePath, withStoryTitle, diffIdentifier);
 
-//    List<LinkSource> linkSources= Arrays.asList(
-//                        node("a").with(Color.GREEN).link(node("b"), node("c")),
-//                        node("b").with(Color.PURPLE).link((node("c"))));
-//
-//
-//
-//        Graph g = graph("example1").directed()
-//            .graphAttr().with(Rank.dir(LEFT_TO_RIGHT))
-//            .linkAttr().with("class", "link-class")
-//            .with(
-//                    linkSourcesRasa.toArray(new LinkSource[linkSourcesRasa.size()])
-//            );
-//
-//        Graphviz.fromGraph(g).height(100).render(Format.PNG).toFile(new File("example/ex2.png"));
-
-
-//    MutableGraph g = mutGraph("example1").setDirected(true).add(
-//            mutNode("a").add(Color.RED).addLink(mutNode("b")));
-//    Graphviz.fromGraph(g).width(200).render(Format.PNG).toFile(new File("example/ex1m.png"));
 
     }
 
-    private static List<List<String>> getConnectedFileLines(List<List<String>> fileLinesCore, List<String> connectedFileList) {
-        List<List<String>> connectedFileLines = new ArrayList<>();
-        for (String absoluteFilePath : connectedFileList) {
-            connectedFileLines.addAll(getFileLines(absoluteFilePath));
-        }
+    private static void plotGraph(List<String> coreFilePathList, List<String> connectedFilePathList, String outputFilePath, boolean withStoryTitle, String diffIdentifier) {
+        try {
+            List<List<String>> fileLinesCore = getFileLines(coreFilePathList, withStoryTitle);
+            List<List<String>> fileLinesConnected = getFileLines(connectedFilePathList, withStoryTitle);
+            List<List<String>> fileLines = getConnectedFileLines(fileLinesCore, fileLinesConnected, withStoryTitle);
 
-//        List<String> checkpointsNeeded = getAllCheckpoints(fileLinesCore);
-//
-//        Map<String, List<String>> coreCheckpointToStoryMap = getCheckpointToStoryMap(fileLinesCore);
-//        Map<String, List<String>> connectedFilesCheckpointToStoryMap = getCheckpointToStoryMap(connectedFileLines);
-//        Map<String, List<String>> requiredConnectedCheckpointToStoryMap = new HashMap<>();
-//
-//        checkpointsNeeded.removeAll(coreCheckpointToStoryMap.keySet());
+            plotGraph(fileLines, outputFilePath, diffIdentifier);
+
+        } catch (Exception e) {
+            System.out.println("Exception while creating graph " + e.getMessage());
+        }
+    }
+
+    private static void plotGraph(List<List<String>> fileLines, String outputFilePath, String diffIdentifier) throws IOException {
+        List<List<Node>> fileStoryList = getNodesFromLines(fileLines, diffIdentifier);
+        List<LinkSource> linkSourcesRasa = getLinkSources(fileStoryList);
+
+        Graph g = graph("rasastory").directed()
+                .linkAttr().with("class", "link-class")
+                .with(
+                        linkSourcesRasa.toArray(new LinkSource[linkSourcesRasa.size()])
+                );
+
+        Graphviz.fromGraph(g).render(Format.PNG).toFile(new File(outputFilePath));
+    }
+
+    private static List<LinkSource> getLinkSources(List<List<Node>> fileStoryList) {
+        List<LinkSource> linkSourcesRasa = new ArrayList<>();
+        for (List<Node> story : fileStoryList) {
+            Node prev = story.get(story.size() - 1);
+            for (int i = story.size() - 2; i >= 0; i--) {
+                Node current = story.get(i);
+                current = current.link(prev);
+                if (i == 0) {
+                    linkSourcesRasa.add(current);
+                } else {
+                    prev = current;
+                }
+            }
+
+        }
+        return linkSourcesRasa;
+    }
+
+    private static List<List<String>> getConnectedFileLines(List<List<String>> fileLinesCore, List<List<String>> connectedFileLines, boolean withStoryTitle) {
+
+        Set<String> allCheckpointsNeeded = getAllCheckpoints(fileLinesCore);
+
+        Map<String, List<List<String>>> finalizedCheckpointToStoryMap = getCheckpointToListOfStoryMap(fileLinesCore, withStoryTitle);
+        Map<String, List<List<String>>> connectedFilesCheckpointToStoryListMap = getCheckpointToListOfStoryMap(connectedFileLines, withStoryTitle);
 
         List<List<String>> finalFileLines = new ArrayList<>();
         finalFileLines.addAll(fileLinesCore);
-        finalFileLines.addAll(connectedFileLines);
 
-//        int loopCount = 0;
-//        while(!checkpointsNeeded.isEmpty() && loopCount < 100) {
-//
-//            ListIterator<String> iter = checkpointsNeeded.listIterator();
-//            while(iter.hasNext()){
-//                String checkpoint = iter.next();
-//                if(connectedFilesCheckpointToStoryMap.containsKey(checkpoint)){
-//                    checkpointsNeeded.addAll(getCheckpointsFromStory(connectedFilesCheckpointToStoryMap.get(checkpoint)));
-//                    iter.remove();
-//                }
-//            }
-//
-//
-//            loopCount+=1;
-//        }
-//        int loopCount = 0;
-//        while(!checkpointsNeeded.isEmpty() && loopCount < 100) {
-//            List<String> newCheckpointsNeeded = new ArrayList<>(checkpointsNeeded);
-//            for (String checkpoint: checkpointsNeeded) {
-//                if(connectedFilesCheckpointToStoryMap.containsKey(checkpoint)){
-//                    newCheckpointsNeeded.addAll(getCheckpointsFromStory(connectedFilesCheckpointToStoryMap.get(checkpoint)));
-//                    coreCheckpointToStoryMap.put(checkpoint, connectedFilesCheckpointToStoryMap.get(checkpoint));
-//                    finalFileLines.add(connectedFilesCheckpointToStoryMap.get(checkpoint));
-//                }
-//            }
-//            newCheckpointsNeeded.removeAll(coreCheckpointToStoryMap.keySet());
-//            checkpointsNeeded = newCheckpointsNeeded;
-//            loopCount+=1;
-//        }
+        int loopCount = 0;
+        while(!allCheckpointsNeeded.isEmpty() && loopCount < 100) {
+            allCheckpointsNeeded.removeAll(finalizedCheckpointToStoryMap.keySet());
 
-        
-        
+            List<String> pendingCheckpoints = new ArrayList<>(allCheckpointsNeeded);
+
+            for (String checkpoint : pendingCheckpoints) {
+                if (connectedFilesCheckpointToStoryListMap.containsKey(checkpoint)) {
+                    allCheckpointsNeeded.addAll(getAllCheckpoints(connectedFilesCheckpointToStoryListMap.get(checkpoint)));
+                    finalizedCheckpointToStoryMap.put(checkpoint, connectedFilesCheckpointToStoryListMap.get(checkpoint));
+                    finalFileLines.addAll(connectedFilesCheckpointToStoryListMap.get(checkpoint));
+                }
+            }
+
+            loopCount+=1;
+        }
 
         return finalFileLines;
     }
 
-    private static Map<String, List<String>> getCheckpointToStoryMap(List<List<String>> fileLines) {
-        Map<String, List<String>> checkpointToStoryMap= new HashMap<>();
+    private static Map<String, List<List<String>>> getCheckpointToListOfStoryMap(List<List<String>> fileLines, boolean withStoryTitle) {
+        Map<String, List<List<String>>> checkpointToStoryListMap= new HashMap<>();
         for (List<String> story : fileLines) {
-            if (story.get(1).startsWith(">")) {
-                checkpointToStoryMap.put(story.get(1), story);
+            String storyFirstLine = withStoryTitle ? story.get(1) : story.get(0);
+            if (storyFirstLine.startsWith(">")) {
+                List<List<String>> storyList = checkpointToStoryListMap.getOrDefault(storyFirstLine, new ArrayList<>());
+                storyList.add(story);
+                checkpointToStoryListMap.put(storyFirstLine, storyList);
             }
         }
-        return checkpointToStoryMap;
+        return checkpointToStoryListMap;
     }
 
-    private static List<String> getAllCheckpoints(List<List<String>> fileLinesCore) {
-        List<String> checkpoints = new ArrayList<>();
+    private static Set<String> getAllCheckpoints(List<List<String>> fileLinesCore) {
+        HashSet<String> checkpoints = new HashSet<>();
         for (List<String> story : fileLinesCore) {
             checkpoints.addAll(getCheckpointsFromStory(story));
         }
@@ -175,7 +145,7 @@ public class Main {
         return checkpoints;
     }
 
-    private static List<List<Node>> getNodesFromLines(List<List<String>> fileLines) {
+    private static List<List<Node>> getNodesFromLines(List<List<String>> fileLines, String diffIdentifier) {
         List<List<Node>> nodesList = new ArrayList<>();
 
         for (List<String> story : fileLines) {
@@ -185,6 +155,8 @@ public class Main {
                     currentList.add(node(line).with(Color.PURPLE));
                 } else if ((line.startsWith(">"))) {
                     currentList.add(node(line).with(Color.GREEN));
+                } else if ((line.startsWith(diffIdentifier))) {
+                    currentList.add(node(line.substring(diffIdentifier.length())).with(Color.RED));
                 } else
                     currentList.add(node(line));
             }
@@ -193,10 +165,21 @@ public class Main {
         return nodesList;
     }
 
-    private static List<List<String>> getFileLines(String coreStoryFileAbsolutePath) {
+    private static List<List<String>> getFileLines(List<String> storyFileAbsolutePathList, boolean withStoryTitle) {
+        List<List<String>> fileLinesList = new ArrayList<>();
+        if (null == storyFileAbsolutePathList) {
+            return new ArrayList<>();
+        }
+        for (String absoluteFilePath : storyFileAbsolutePathList) {
+            fileLinesList.addAll(getFileLines(absoluteFilePath, withStoryTitle));
+        }
+        return fileLinesList;
+    }
+
+    private static List<List<String>> getFileLines(String storyFileAbsolutePath, boolean withStoryTitle) {
         List<List<String>> fileLines = new ArrayList<>();
         try {
-            Scanner s = new Scanner(new FileInputStream(coreStoryFileAbsolutePath));
+            Scanner s = new Scanner(new FileInputStream(storyFileAbsolutePath));
             List<String> currentList = new ArrayList<>();
             while (s.hasNext()) {
                 String line = s.nextLine();
@@ -216,12 +199,12 @@ public class Main {
                     }
                     currentList = new ArrayList<>();
                 }
-                if (!line.startsWith("##"))
+                if ((!withStoryTitle && !line.startsWith("##")) || withStoryTitle)      //add all lines if with story title, otherise add only iff not starting with ##
                     currentList.add(line);
             }
             fileLines.add(currentList);
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            System.out.println("Exception while reading file " + storyFileAbsolutePath + e.getMessage());
         }
         return fileLines;
     }
