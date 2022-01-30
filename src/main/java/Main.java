@@ -31,11 +31,10 @@ public class Main {
 
         String outputFilePath = "outputfiles/temp";
 
-        boolean withStoryTitle = false;
-
         String diffIdentifier = "+";
 
-        plotGraph(coreFilePathList, connectedFilePathList, outputFilePath, withStoryTitle, diffIdentifier);
+        plotGraph(coreFilePathList, connectedFilePathList, outputFilePath, true, diffIdentifier);
+        plotGraph(coreFilePathList, connectedFilePathList, outputFilePath, false, diffIdentifier);
 
 
     }
@@ -46,14 +45,14 @@ public class Main {
             List<List<String>> fileLinesConnected = getFileLines(connectedFilePathList, withStoryTitle);
             List<List<String>> fileLines = getConnectedFileLines(fileLinesCore, fileLinesConnected, withStoryTitle);
 
-            plotGraph(fileLines, outputFilePath, diffIdentifier);
+            plotGraph(fileLines, outputFilePath, diffIdentifier, withStoryTitle);
 
         } catch (Exception e) {
             System.out.println("Exception while creating graph " + e.getMessage());
         }
     }
 
-    private static void plotGraph(List<List<String>> fileLines, String outputFilePath, String diffIdentifier) throws IOException {
+    private static void plotGraph(List<List<String>> fileLines, String outputFilePath, String diffIdentifier, boolean withStoryTitle) throws IOException {
         List<List<Node>> fileStoryList = getNodesFromLines(fileLines, diffIdentifier);
         List<LinkSource> linkSourcesRasa = getLinkSources(fileStoryList);
 
@@ -62,7 +61,7 @@ public class Main {
                 .with(
                         linkSourcesRasa.toArray(new LinkSource[linkSourcesRasa.size()])
                 );
-
+        outputFilePath += withStoryTitle ? "_withStory" : "_withoutStory";
         Graphviz.fromGraph(g).render(Format.PNG).toFile(new File(outputFilePath));
     }
 
