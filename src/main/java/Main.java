@@ -43,17 +43,17 @@ public class Main {
         try {
             List<List<String>> fileLinesCore = getFileLines(coreFilePathList, withStoryTitle);
             List<List<String>> fileLinesConnected = getFileLines(connectedFilePathList, withStoryTitle);
-            List<List<String>> fileLines = getConnectedFileLines(fileLinesCore, fileLinesConnected, withStoryTitle);
+            Map<String,List<List<String>>> fileLinesMap = getConnectedFileLines(fileLinesCore, fileLinesConnected, withStoryTitle);
 
-            plotGraph(fileLines, outputFilePath, diffIdentifier, withStoryTitle);
+            plotGraph(fileLinesMap, outputFilePath, diffIdentifier, withStoryTitle);
 
         } catch (Exception e) {
             System.out.println("Exception while creating graph " + e.getMessage());
         }
     }
 
-    private static void plotGraph(List<List<String>> fileLines, String outputFilePath, String diffIdentifier, boolean withStoryTitle) throws IOException {
-        List<List<Node>> fileStoryList = getNodesFromLines(fileLines, diffIdentifier);
+    private static void plotGraph(Map<String,List<List<String>>> fileLinesMap, String outputFilePath, String diffIdentifier, boolean withStoryTitle) throws IOException {
+        List<List<Node>> fileStoryList = getNodesFromLines(fileLinesMap, diffIdentifier);
         List<LinkSource> linkSourcesRasa = getLinkSources(fileStoryList);
 
         Graph g = graph("rasastory").directed()
@@ -83,15 +83,14 @@ public class Main {
         return linkSourcesRasa;
     }
 
-    private static List<List<String>> getConnectedFileLines(List<List<String>> fileLinesCore, List<List<String>> connectedFileLines, boolean withStoryTitle) {
+    private static Map<String,List<List<String>>> getConnectedFileLines(List<List<String>> fileLinesCore, List<List<String>> connectedFileLines, boolean withStoryTitle) {
 
         Set<String> allCheckpointsNeeded = getAllCheckpoints(fileLinesCore);
 
         Map<String, List<List<String>>> finalizedCheckpointToStoryMap = getCheckpointToListOfStoryMap(fileLinesCore, withStoryTitle);
         Map<String, List<List<String>>> connectedFilesCheckpointToStoryListMap = getCheckpointToListOfStoryMap(connectedFileLines, withStoryTitle);
 
-        List<List<String>> finalFileLines = new ArrayList<>();
-        finalFileLines.addAll(fileLinesCore);
+        List<List<String>> connectedFileLinesFinal = new ArrayList<>();
 
         int loopCount = 0;
         while(!allCheckpointsNeeded.isEmpty() && loopCount < 100) {
@@ -103,14 +102,17 @@ public class Main {
                 if (connectedFilesCheckpointToStoryListMap.containsKey(checkpoint)) {
                     allCheckpointsNeeded.addAll(getAllCheckpoints(connectedFilesCheckpointToStoryListMap.get(checkpoint)));
                     finalizedCheckpointToStoryMap.put(checkpoint, connectedFilesCheckpointToStoryListMap.get(checkpoint));
-                    finalFileLines.addAll(connectedFilesCheckpointToStoryListMap.get(checkpoint));
+                    connectedFileLinesFinal.addAll(connectedFilesCheckpointToStoryListMap.get(checkpoint));
                 }
             }
 
             loopCount+=1;
         }
 
-        return finalFileLines;
+        Map<String,List<List<String>>> finalFileLinesMap = new LinkedHashMap<>();
+        finalFileLinesMap.put("core", fileLinesCore);
+        finalFileLinesMap.put("connected", connectedFileLinesFinal);
+        return finalFileLinesMap;
     }
 
     private static Map<String, List<List<String>>> getCheckpointToListOfStoryMap(List<List<String>> fileLines, boolean withStoryTitle) {
@@ -144,10 +146,16 @@ public class Main {
         return checkpoints;
     }
 
-    private static List<List<Node>> getNodesFromLines(List<List<String>> fileLines, String diffIdentifier) {
+    private static List<List<Node>> getNodesFromLines(Map<String,List<List<String>>> fileLinesMap, String diffIdentifier) {
         List<List<Node>> nodesList = new ArrayList<>();
+        nodesList.addAll(getNodesFromLines(fileLinesMap.get("core"), diffIdentifier, Color.BLACK));
+        nodesList.addAll(getNodesFromLines(fileLinesMap.get("connected"), diffIdentifier, Color.SKYBLUE));
+        return nodesList;
+    }
 
-        for (List<String> story : fileLines) {
+    private static List<List<Node>> getNodesFromLines(List<List<String>> fileLinesCore, String diffIdentifier, Color defaultColor) {
+        List<List<Node>> nodesList = new ArrayList<>();
+        for (List<String> story : fileLinesCore) {
             List<Node> currentList = new ArrayList<>();
             for (String line : story) {
                 if (line.startsWith("##")) {
@@ -157,7 +165,7 @@ public class Main {
                 } else if ((line.startsWith(diffIdentifier))) {
                     currentList.add(node(line.substring(diffIdentifier.length())).with(Color.RED));
                 } else
-                    currentList.add(node(line));
+                    currentList.add(node(line).with(defaultColor));
             }
             nodesList.add(currentList);
         }
